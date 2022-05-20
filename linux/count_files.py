@@ -1,6 +1,6 @@
 """Count files
-This script counts files in any directory and out puts how many files there are in each folder
-along with their disk usage. Various flags can be set to change the output of the script."""
+This script counts files in directories and outputs their disk usage and # files.
+Various flags can be set to change the output of the script."""
 import subprocess as sp
 import sys
 import os
@@ -10,27 +10,27 @@ TOTAL_FILES = 0
 TOTAL_GB = 0
 TOTAL_MB = 0
 
-FOLDERS = []
+DIRECTORIES = []
 FILES = []
 
 OPTIONS = ["-t", "-T", "--triple", "-i", "--ignore", "-h", "-H", "--help"]
 OPTIONS_FLAGS = {"Triplets": False, "Ignore": False}
 OPTIONS_HELP_TEXT = {
-    "-t": "{:>5}{:>3} {:10} \tPrint triplets (files/3)".format(OPTIONS[0], OPTIONS[1], OPTIONS[2]),
-    "-i": "{:>5} {:10} \tIgnore non-folders if present in args".format(OPTIONS[3], OPTIONS[4]),
-    "-h": "{:>5}{:>3} {:10} \tDisplay this help and exit".format(OPTIONS[-3], OPTIONS[-2], OPTIONS[-1])
+    "-t": "{:>5}{:>3} {:<10}\tPrint triplets (files/3)".format(OPTIONS[0], OPTIONS[1], OPTIONS[2]),
+    "-i": "{:>5}{:>3} {:<10}\tIgnore non-directories if present in args".format(OPTIONS[3], "", OPTIONS[4]),
+    "-h": "{:>5}{:>3} {:<10}\tDisplay this help and exit".format(OPTIONS[-3], OPTIONS[-2], OPTIONS[-1])
 }
 
 
-def count_files(folder):
+def count_files(directory):
     """
-    Count files in a given folder
-    Ignores folders/files with insufficient permissions
+    Count files in a given directory
+    Ignores directories/files with insufficient permissions
     Parameters:
-    folder: The wanted folder to count files in.
+    directory: The wanted directory to count files in.
     """
     global TOTAL_FILES
-    cmd = "find {} -type f 2>/dev/null | wc -l".format(folder)
+    cmd = "find {} -type f 2>/dev/null | wc -l".format(directory)
     ret_val = sp.run(["/bin/bash", "-c", cmd], capture_output=True, check=False)
     if ret_val.returncode == 0:
         output = ret_val.stdout.decode("utf-8").split("\n")[0]
@@ -41,12 +41,12 @@ def count_files(folder):
 
 def get_size(path):
     """
-    Get the size of folder
-    Ignores folder with insufficient permissions
+    Get the size of the given path
+    Ignores directories/files with insufficient permissions
     Parameters:
-    folder: Folder to get size of
+    path: Path to directory or file to get size of
     """
-    cmd = "du -s -B 1K {} 2>/dev/null".format(path)  # Retrieves folder size in 1024(bytes) units
+    cmd = "du -s -B 1K {} 2>/dev/null".format(path)  # Retrieves size in 1024(bytes) units
     ret_val = sp.run(["/bin/bash", "-c", cmd], capture_output=True, check=False)
     output = ret_val.stdout.decode("utf-8").split("\t")[0]
     return compute_str_to_bytes(output)
@@ -71,28 +71,28 @@ def compute_str_to_bytes(string):
     return "{:<12} / {:^12}".format(mb_size, gb_size)
 
 
-def check_read_permission(folder):
-    """Check if there is permission to read the given folder"""
-    return os.access(folder, os.R_OK)
+def check_read_permission(directory):
+    """Check if there is permission to read the given directory"""
+    return os.access(directory, os.R_OK)
 
 
-def summarize_folder():
-    """Summarize folder in terms of files and disk usage"""
+def summarize_directory():
+    """Summarize directories in terms of files and disk usage"""
     if OPTIONS_FLAGS["Triplets"]:
-        print("\n{:-<40}{:-<15}{:-<15}{:-<30}".format("FOLDER", "FILES", "TRIPLES", "SIZE(MB/GB)"))
+        print("\n{:-<40}{:-<15}{:-<15}{:-<30}".format("DIRECTORY", "FILES", "TRIPLES", "SIZE(MB/GB)"))
     else:
-        print("\n{:-<40}{:-<15}{:-<30}".format("FOLDER", "FILES", "SIZE"))
-    for subfolder in FOLDERS:
-        permission = check_read_permission(subfolder)
+        print("\n{:-<40}{:-<15}{:-<45}".format("DIRECTORY", "FILES", "SIZE"))
+    for sub_dir in DIRECTORIES:
+        permission = check_read_permission(sub_dir)
         if permission:
-            files = count_files(subfolder)
-            folder_size = get_size(subfolder)
+            files = count_files(sub_dir)
+            dir_size = get_size(sub_dir)
             if OPTIONS_FLAGS["Triplets"]:
-                print("{:<40}{:<15,}{:<15,.2f}{:<}".format(subfolder, files, (files / 3), folder_size))
+                print("{:<40}{:<15,}{:<15,.2f}{:<}".format(sub_dir, files, (files / 3), dir_size))
             else:
-                print("{:<40}{:<15,}{:<}".format(subfolder, files, folder_size))
+                print("{:<40}{:<15,}{:<}".format(sub_dir, files, dir_size))
         else:
-            print("{} Permission denied".format(subfolder))
+            print("{} Permission denied".format(sub_dir))
     print("{:-<100}".format("-"))
 
 
@@ -130,21 +130,21 @@ def print_result(triplets):
     print("{:-<100}\n".format("-"))
 
 
-def validate_folder(folder):
-    """Check if a folder is a valid folder, or remove it if the ignore flag is set"""
-    if os.path.isdir(folder):
+def validate_path(path):
+    """Check if a path is a directory or a file"""
+    if os.path.isdir(path):
         return
-    elif os.path.isfile(folder):
-        FILES.append(folder)
+    elif os.path.isfile(path):
+        FILES.append(path)
         return
     else:
-        print("ERROR! {} is not a folder/file".format(folder))
-        print("You can ignore non-folders with the '-i' flag")
+        print("ERROR! {} is not a directory/file".format(path))
+        print("You can ignore non-directory/files with the '-i' flag")
         sys.exit(1)
 
 
 def check_args(args):
-    """Separate args from folders"""
+    """Separate args from paths"""
     for item in args:
         if item in OPTIONS:
             if not OPTIONS_FLAGS["Triplets"]:
@@ -154,24 +154,24 @@ def check_args(args):
                 if item in OPTIONS[3:5]:
                     OPTIONS_FLAGS["Ignore"] = True
         else:
-            FOLDERS.append(item)
-    for subfolder in FOLDERS:
-        validate_folder(subfolder)
+            DIRECTORIES.append(item)
+    for sub_dir in DIRECTORIES:
+        validate_path(sub_dir)
     for file in FILES:
-        if file in FOLDERS:
-            FOLDERS.remove(file)
+        if file in DIRECTORIES:
+            DIRECTORIES.remove(file)
 
 
 def main():
     """Main function"""
     if len(sys.argv) < 2:
-        print("Usage: cf [OPTION]... [FOLDER]... ")
+        print("Usage: cf [OPTION]... [PATH]... ")
         sys.exit(1)
     else:
         if any(help_option in sys.argv for help_option in OPTIONS[-3:]):
-            print("Usage: cf [OPTION]... [FOLDER(S)]... ")
+            print("Usage: cf [OPTION]... [PATH]... ")
             print("Counts files")
-            print("*NOTE* ignores folders/files with insufficient permissions!")
+            print("*NOTE* ignores directories/files with insufficient permissions!")
             print("Options:")
             for option in OPTIONS_HELP_TEXT.values():
                 print(option)
@@ -182,9 +182,9 @@ def main():
         print("DATE: {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         print("-------------------------")
         check_args(sys.argv[1:])
-        summarize_folder()
+        summarize_directory()
         summarize_files()
-        if len(FOLDERS) > 1:
+        if len(DIRECTORIES) > 1:
             print_result(OPTIONS_FLAGS["Triplets"])
 
 
