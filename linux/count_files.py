@@ -101,7 +101,7 @@ def summarize_files():
     global TOTAL_FILES
     if OPTIONS_FLAGS["Ignore"]:
         return
-    if not len(FILES) > 0:
+    if len(FILES) <= 0:
         return
     print("\n{:-<40}{:-<60}".format("FILE", "SIZE"))
     TOTAL_FILES += len(FILES)
@@ -132,15 +132,10 @@ def print_result(triplets):
 
 def validate_path(path):
     """Check if a path is a directory or a file"""
-    if os.path.isdir(path):
-        return
-    elif os.path.isfile(path):
+    if os.path.isfile(path):
         FILES.append(path)
+    elif os.path.isdir(path):
         return
-    else:
-        print("ERROR! {} is not a directory/file".format(path))
-        print("You can ignore non-directory/files with the '-i' flag")
-        sys.exit(1)
 
 
 def check_args(args):
